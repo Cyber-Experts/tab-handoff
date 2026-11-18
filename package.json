@@ -1,6 +1,6 @@
 {
   "name": "tab-handoff",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Hand files from one web app to another, tab to tab, with postMessage: no server, nothing uploaded, origin-locked and validated.",
   "license": "MIT",
   "author": "Florian Amette",
@@ -8,26 +8,41 @@
     "type": "git",
     "url": "git+https://github.com/Cyber-Experts/tab-handoff.git"
   },
-  "keywords": ["postMessage", "handoff", "file", "blob", "cross-origin", "window.open", "client-side"],
+  "keywords": [
+    "postMessage",
+    "handoff",
+    "file",
+    "blob",
+    "cross-origin",
+    "window.open",
+    "client-side"
+  ],
   "type": "module",
   "sideEffects": false,
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
     }
   },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
-  "files": ["dist/index.js", "dist/index.d.ts", "README.md", "LICENSE"],
+  "files": [
+    "dist/index.js",
+    "dist/index.d.ts",
+    "README.md",
+    "LICENSE"
+  ],
   "engines": {
-    "node": ">=18"
+    "node": "^20.19.0 || >=22.12.0"
   },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "prepublishOnly": "npm run typecheck && npm test && npm run build"
+    "prepublishOnly": "npm run typecheck && npm test && npm run build && npm run test:exports",
+    "test:exports": "node -e \"const m = require('tab-handoff'); if (typeof m.sendHandoff !== 'function') process.exit(1)\" && node --input-type=module -e \"const m = await import('tab-handoff'); if (typeof m.receiveHandoff !== 'function') process.exit(1)\""
   },
   "devDependencies": {
     "typescript": "^5.9.3",
