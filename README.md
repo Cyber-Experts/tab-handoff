@@ -114,6 +114,13 @@ npm run typecheck
 npm run build     # dist/index.js + dist/index.d.ts
 ```
 
+## Releasing
+
+Bump `version` in `package.json`, commit, and push a matching tag
+(`git tag v1.0.1 && git push origin v1.0.1`). `.github/workflows/publish.yml`
+then checks, builds and publishes with npm trusted publishing and provenance
+(no npm token).
+
 ## License
 
 MIT

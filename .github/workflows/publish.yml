@@ -1,0 +1,42 @@
+# Trusted publishing (OIDC), no npm token: on npmjs.com → package tab-handoff →
+# Settings → Trusted Publisher → GitHub Actions, repository
+# Cyber-Experts/tab-handoff, workflow filename publish.yml (case-sensitive).
+#
+# Release: bump "version" in package.json, commit, then push a matching tag:
+#   git tag v1.0.1 && git push origin v1.0.1
+
+name: Publish to npm
+
+on:
+  push:
+    tags: ["v*.*.*"]
+
+concurrency:
+  group: npm-publish-${{ github.repository }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          registry-url: "https://registry.npmjs.org"
+      - name: npm CLI with trusted publishing
+        run: npm install -g npm@^11.5.1
+      - name: Tag matches package.json
+        run: |
+          v="$(node -p "require('./package.json').version")"
+          [ "v$v" = "${GITHUB_REF_NAME}" ] || { echo "tag ${GITHUB_REF_NAME} != package.json v$v"; exit 1; }
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+      - run: npm publish --provenance --access public
