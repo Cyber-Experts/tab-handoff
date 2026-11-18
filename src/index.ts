@@ -26,7 +26,17 @@ const ID_RE = /^[a-z0-9][a-z0-9-]{0,39}$/;
 export interface HandoffFile {
   path: string;
   blob: Blob;
+  /**
+   * When the file was last modified (ms since the epoch), e.g. from the file
+   * system it was extracted from. The receiver's File carries it (1.1+), for
+   * tools that date records by their file. Left out when not finite.
+   */
+  lastModified?: number;
 }
+
+/** Valid `lastModified` values: what a JavaScript Date can hold. */
+const MAX_TIME = 8.64e15;
+const isTime = (x: unknown): x is number => typeof x === "number" && Number.isFinite(x) && Math.abs(x) <= MAX_TIME;
 
 /** A file as the receiver gets it: a safe relative path and a File over the received bytes. */
 export interface ReceivedFile {
@@ -99,15 +109,17 @@ export function parseFiles(data: unknown, limits: Limits): ReceivedFile[] | null
   const out: ReceivedFile[] = [];
   for (const [i, item] of items.entries()) {
     if (typeof item !== "object" || item === null) return null;
-    const { path, blob } = item as { path?: unknown; blob?: unknown };
+    const { path, blob, lastModified } = item as { path?: unknown; blob?: unknown; lastModified?: unknown };
     if (typeof path !== "string" || !(blob instanceof Blob)) return null;
+    if (lastModified !== undefined && !isTime(lastModified)) return null;
     if (blob.size > perFile) return null;
     total += blob.size;
     if (total > limits.maxTotalBytes) return null;
     const p = safePath(path) || `file-${i + 1}.bin`;
     const name = p.slice(p.lastIndexOf("/") + 1);
     // A File over the received Blob: same bytes, not copied.
-    out.push({ path: p, file: new File([blob], name, { type: blob.type }) });
+    const file = new File([blob], name, lastModified === undefined ? { type: blob.type } : { type: blob.type, lastModified });
+    out.push({ path: p, file });
   }
   return out;
 }
@@ -276,7 +288,11 @@ export function sendHandoff(o: SendOptions): Promise<void> {
       const err = checkLimits(files, limits);
       if (err) return end(err, true);
       sent = true;
-      tab.postMessage({ type: FILES, v: VERSION, files }, origin);
+      // Only the fields of the protocol, and a lastModified only when valid.
+      const payload = files.map(({ path, blob, lastModified }) =>
+        isTime(lastModified) ? { path, blob, lastModified } : { path, blob },
+      );
+      tab.postMessage({ type: FILES, v: VERSION, files: payload }, origin);
       files = null;
     };
     const onMessage = (e: MessageEvent) => {

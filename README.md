@@ -84,7 +84,11 @@ function onClick() {
   sendHandoff({
     url: "https://www.evtxparser.com/en",
     sender: "disk-image-parser",
-    files: async () => [{ path: "Windows/System32/winevt/Logs/Security.evtx", blob: await extract(node) }],
+    files: async () => [
+      // lastModified (optional): the receiver's File keeps it, for tools that
+      // date records by their file (1.1+).
+      { path: "Windows/System32/winevt/Logs/Security.evtx", blob: await extract(node), lastModified: node.mtime },
+    ],
     size: node.size, // optional: refuse before opening when over maxTotalBytes
     maxTotalBytes: 2 * 1024 ** 3,
   }).catch((e: HandoffError) => showError(e.message));
@@ -97,9 +101,16 @@ Errors are `HandoffError` with a `code`: `too-large`, `too-many`, `empty`,
 ## Protocol
 
 Version 2. Message types: `handoff:ready` (`{ limits }`), `handoff:files`
-(`{ files: { path: string; blob: Blob }[] }`), `handoff:received`
-(`{ count }`), all with `v: 2`. The hash flag is `handoff=<id>`, where an id
-is 1–40 characters of `a-z`, `0-9` and `-`. Other hash content is kept.
+(`{ files: { path: string; blob: Blob; lastModified?: number }[] }`),
+`handoff:received` (`{ count }`), all with `v: 2`. The hash flag is
+`handoff=<id>`, where an id is 1–40 characters of `a-z`, `0-9` and `-`.
+Other hash content is kept.
+
+`lastModified` (ms since the epoch, added in 1.1.0) is optional both ways: a
+1.0 receiver ignores it, and a 1.1 receiver gives the File the time it was
+sent with, or the time of receipt when there is none. A value that is not a
+finite number a `Date` can hold makes the message invalid; the sender leaves
+such values out.
 
 Requires a browser that passes `Blob` through `postMessage` (all current
 browsers) and no `Cross-Origin-Opener-Policy` that severs the opener on

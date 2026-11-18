@@ -1,6 +1,6 @@
 {
   "name": "tab-handoff",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "description": "Hand files from one web app to another, tab to tab, with postMessage: no server, nothing uploaded, origin-locked and validated.",
   "license": "MIT",
   "author": "Florian Amette",

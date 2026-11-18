@@ -75,6 +75,13 @@ describe("payload validation", () => {
     expect(await text(got[0].file)).toBe("abc");
   });
 
+  it("keeps a file's modification time when the sender gives one", () => {
+    const t = Date.UTC(2025, 2, 14, 9, 30);
+    const got = parseFiles(msg([{ path: "var/log/syslog", blob: blob("x"), lastModified: t }, { path: "b", blob: blob("y") }]), limits)!;
+    expect(got[0].file.lastModified).toBe(t);
+    expect(got[1].file.lastModified).toBeGreaterThan(t); // none given: now
+  });
+
   it("rejects anything else", () => {
     const ok = { path: "a", blob: blob("x") };
     for (const bad of [
@@ -89,6 +96,10 @@ describe("payload validation", () => {
       msg([{ path: "a", blob: new Uint8Array(1) }]),
       msg([{ path: "a", blob: "x" }]),
       msg([{ path: 1, blob: blob("x") }]),
+      msg([{ path: "a", blob: blob("x"), lastModified: "2025-03-14" }]),
+      msg([{ path: "a", blob: blob("x"), lastModified: Number.NaN }]),
+      msg([{ path: "a", blob: blob("x"), lastModified: Number.POSITIVE_INFINITY }]),
+      msg([{ path: "a", blob: blob("x"), lastModified: 1e16 }]),
       msg([{ path: "a", blob: blob("1234567") }]), // over maxFileBytes
       msg([{ path: "a", blob: blob("123456") }, { path: "b", blob: blob("12345") }]), // over maxTotalBytes
       msg([null]),
@@ -137,6 +148,22 @@ describe("handoff between two tabs", () => {
       "Windows/System32/winevt/Logs/System.evtx",
     ]);
     expect(await Promise.all(receiver!.got.files!.map((f) => text(f.file)))).toEqual(["sec", "sys"]);
+  });
+
+  it("carries valid modification times and drops invalid ones", async () => {
+    const t = Date.UTC(2025, 2, 14, 9, 30);
+    await sendHandoff({
+      window: sender as unknown as Window,
+      url: `${RECEIVER}/en`,
+      sender: "disk-image-parser",
+      files: async () => [
+        { path: "var/log/syslog", blob: blob("a"), lastModified: t },
+        { path: "var/log/auth.log", blob: blob("b"), lastModified: Number.NaN },
+      ],
+    });
+    const [syslog, auth] = receiver!.got.files!;
+    expect(syslog.file.lastModified).toBe(t);
+    expect(auth.file.lastModified).toBeGreaterThan(t); // dropped by the sender, so the handoff still goes through
   });
 
   it("refuses early, with a clear error, what the receiver says it cannot take", async () => {
