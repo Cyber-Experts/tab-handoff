@@ -1,0 +1,36 @@
+{
+  "name": "tab-handoff",
+  "version": "1.0.0",
+  "description": "Hand files from one web app to another, tab to tab, with postMessage: no server, nothing uploaded, origin-locked and validated.",
+  "license": "MIT",
+  "author": "Florian Amette",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Cyber-Experts/tab-handoff.git"
+  },
+  "keywords": ["postMessage", "handoff", "file", "blob", "cross-origin", "window.open", "client-side"],
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": ["dist/index.js", "dist/index.d.ts", "README.md", "LICENSE"],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "prepublishOnly": "npm run typecheck && npm test && npm run build"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.12"
+  }
+}
